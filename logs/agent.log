@@ -1,0 +1,4 @@
+[2026-09-28 14:18:13] USER: hi
+[2026-09-28 14:18:16] AGENT: Hi there! How can I help you today? I have access to a calculator function that can perform arithmetic operations (addition, subtraction, multiplication, division) with parentheses support. Feel free to ask me to calculate anything or help with other tasks!
+[2026-09-28 14:18:25] USER: посчитай 25 * 4
+[2026-09-28 14:18:29] AGENT: Результат вычисления: 25 × 4 = 100
