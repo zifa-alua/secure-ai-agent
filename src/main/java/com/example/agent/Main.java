@@ -1,11 +1,11 @@
 package com.example.agent;
 
+import java.io.IOException;
 import java.util.Scanner;
 
 public class Main {
 
     public static void main(String[] args) {
-        // Ключ берём из .env, а не из кода
         EnvLoader env = new EnvLoader(".env");
         String apiKey = env.get("OPENROUTER_API_KEY");
         if (apiKey == null || apiKey.isBlank()) {
@@ -13,10 +13,25 @@ public class Main {
             return;
         }
 
-        LlmClient llm = new LlmClient(apiKey);
+        SqlTool.init();
 
+        // HTTP-эндпоинт (если задан AGENT_API_KEY) — запускается в фоне
+        String agentKey = env.get("AGENT_API_KEY");
+        if (agentKey != null && !agentKey.isBlank()) {
+            try {
+                new ApiServer(new LlmClient(apiKey), agentKey).start(8080);
+            } catch (IOException e) {
+                System.out.println("Не удалось запустить HTTP-эндпоинт: " + e.getMessage());
+            }
+        } else {
+            System.out.println("AGENT_API_KEY не задан — HTTP-эндпоинт выключен (работает только CLI).");
+        }
+
+        // CLI
+        LlmClient llm = new LlmClient(apiKey);
         System.out.println("=== Secure AI Agent ===");
-        System.out.println("Введите запрос (или 'exit' — выход):");
+        System.out.println("Инструменты: калькулятор, запрос к базе (products, customers), дата/время.");
+        System.out.println("Агент помнит контекст в рамках сессии. Введите запрос (или 'exit' — выход):");
 
         Scanner scanner = new Scanner(System.in);
         while (true) {
@@ -26,18 +41,19 @@ public class Main {
             if (input.equalsIgnoreCase("exit")) break;
             if (input.isEmpty()) continue;
 
-            Logger.log("USER", input); // логируем запрос (без секретов)
-
+            Logger.logTurn("user", input);
             try {
                 String answer = llm.ask(input);
-                Logger.log("AGENT", answer); // логируем ответ
+                Logger.logTurn("agent", answer);
                 System.out.println(answer);
             } catch (Exception e) {
-                Logger.log("ERROR", e.getMessage());
+                Stats.countError();
+                Logger.logTurn("error", e.getMessage());
                 System.out.println("Ошибка при обращении к LLM: " + e.getMessage());
             }
         }
 
         System.out.println("Пока!");
+        System.exit(0); // остановить фоновый HTTP-сервер
     }
 }

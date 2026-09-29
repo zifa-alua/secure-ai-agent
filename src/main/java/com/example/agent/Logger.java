@@ -1,5 +1,8 @@
 package com.example.agent;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -12,21 +15,46 @@ public class Logger {
     private static final Path LOG_DIR = Path.of("logs");
     private static final Path LOG_FILE = LOG_DIR.resolve("agent.log");
     private static final DateTimeFormatter TS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final ObjectMapper mapper = new ObjectMapper();
 
-    public static void log(String role, String text) {
+    /** Лог реплики диалога: type = "user" / "agent" / "error". */
+    public static synchronized void logTurn(String type, String text) {
+        ObjectNode o = mapper.createObjectNode();
+        o.put("ts", now());
+        o.put("type", type);
+        o.put("text", truncate(text, 500));
+        write(o);
+    }
+
+    /** Структурированный лог вызова инструмента. */
+    public static synchronized void logTool(String tool, String input, long durationMs, boolean ok) {
+        ObjectNode o = mapper.createObjectNode();
+        o.put("ts", now());
+        o.put("type", "tool");
+        o.put("tool", tool);
+        o.put("input", truncate(input, 200)); // усечённый вход
+        o.put("duration_ms", durationMs);
+        o.put("status", ok ? "ok" : "error");
+        write(o);
+    }
+
+    private static void write(ObjectNode o) {
         try {
             Files.createDirectories(LOG_DIR);
-            String line = "[" + LocalDateTime.now().format(TS) + "] " + role + ": " + oneLine(text)
-                    + System.lineSeparator();
+            String line = mapper.writeValueAsString(o) + System.lineSeparator();
             Files.writeString(LOG_FILE, line, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
         } catch (IOException e) {
             System.out.println("(не удалось записать лог: " + e.getMessage() + ")");
         }
     }
 
-    // Складываем в одну строку, чтобы каждая запись занимала одну строку лога
-    private static String oneLine(String s) {
+    private static String now() {
+        return LocalDateTime.now().format(TS);
+    }
+
+    private static String truncate(String s, int max) {
         if (s == null) return "";
-        return s.replace("\r", " ").replace("\n", " ");
+        s = s.replace("\r", " ").replace("\n", " ");
+        return s.length() > max ? s.substring(0, max) + "…" : s;
     }
 }

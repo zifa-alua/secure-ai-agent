@@ -1,0 +1,23 @@
+### 1. БЕЗ ключа — ожидаем 401 (анонимные отклоняются)
+POST http://localhost:8080/chat
+Content-Type: application/json
+
+{ "message": "посчитай 2+2" }
+
+### 2. С НЕВЕРНЫМ ключом — ожидаем 401
+POST http://localhost:8080/chat
+Content-Type: application/json
+X-API-Key: wrong-key
+
+{ "message": "посчитай 2+2" }
+
+### 3. С ВЕРНЫМ ключом — ожидаем 200 и ответ агента
+POST http://localhost:8080/chat
+Content-Type: application/json
+X-API-Key: my-super-secret-key-12345
+
+{ "message": "какие товары в категории Мебель?" }
+
+### 4. Статистика вызовов инструментов
+GET http://localhost:8080/stats
+X-API-Key: my-super-secret-key-12345
